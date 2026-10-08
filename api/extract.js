@@ -3,17 +3,32 @@ const { GoogleGenerativeAI } = require('@google/generative-ai');
 // Inicializar Gemini con la variable de entorno de Vercel
 const genAI = new GoogleGenerativeAI(process.env.FacturasOCR);
 
-const MAX_INTENTOS = 3;      // numero total de intentos
-const ESPERA_BASE_MS = 1500; // espera entre intentos: 1.5s, 3s...
+// Modelos a probar en orden. La cuota se cuenta POR MODELO, asi que si uno
+// agota su cuota (429) se pasa al siguiente. Se pueden cambiar sin tocar el
+// codigo con las variables de entorno GEMINI_MODEL y GEMINI_MODEL_RESPALDO.
+const MODELOS = [
+    process.env.GEMINI_MODEL || 'gemini-2.5-flash-lite',
+    process.env.GEMINI_MODEL_RESPALDO || 'gemini-flash-latest'
+];
+
+const INTENTOS_POR_MODELO = 2;  // solo para errores de saturacion (503...)
+const ESPERA_BASE_MS = 1500;
 
 const esperar = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-// Decide si un error es temporal (merece reintento) o definitivo
-function esErrorTemporal(error) {
-    const msg = String(error && error.message ? error.message : error);
+const textoError = (e) => String(e && e.message ? e.message : e);
+
+// 429 = cuota agotada, 404 = modelo inexistente: reintentar el mismo modelo no sirve
+function debeCambiarDeModelo(error) {
+    return /\b(429|404)\b/.test(textoError(error));
+}
+
+// Saturacion temporal de Google: merece reintento en el mismo modelo
+function esSaturacionTemporal(error) {
+    const msg = textoError(error);
     return (
-        /\b(429|500|502|503|504)\b/.test(msg) ||
-        /high demand|overloaded|try again later|unavailable|timeout|fetch failed/i.test(msg)
+        /\b(500|502|503|504)\b/.test(msg) ||
+        /high demand|overloaded|try again later|unavailable|fetch failed/i.test(msg)
     );
 }
 
@@ -29,11 +44,6 @@ module.exports = async function handler(req, res) {
         return res.status(400).json({ error: 'No image provided' });
     }
 
-    const model = genAI.getGenerativeModel({
-        model: "gemini-flash-latest",
-        generationConfig: { responseMimeType: "application/json" }
-    });
-
     const imageParts = [{
         inlineData: {
             data: image,
@@ -43,32 +53,46 @@ module.exports = async function handler(req, res) {
 
     const prompt = "Extract the invoice number and total price from this receipt. Return ONLY a valid JSON object with exactly two keys: 'invoiceNumber' (string) and 'totalPrice' (number).";
 
-    let ultimoError = null;
+    const fallos = [];
 
-    for (let intento = 1; intento <= MAX_INTENTOS; intento++) {
-        try {
-            const result = await model.generateContent([prompt, ...imageParts]);
-            const responseText = result.response.text();
+    for (const nombreModelo of MODELOS) {
+        const model = genAI.getGenerativeModel({
+            model: nombreModelo,
+            generationConfig: { responseMimeType: "application/json" }
+        });
 
-            // Por si acaso el modelo mete etiquetas markdown
-            const limpio = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
-            const extractedData = JSON.parse(limpio);
+        for (let intento = 1; intento <= INTENTOS_POR_MODELO; intento++) {
+            try {
+                const result = await model.generateContent([prompt, ...imageParts]);
+                const responseText = result.response.text();
 
-            return res.status(200).json({ ...extractedData, intentos: intento });
+                // Por si acaso el modelo mete etiquetas markdown
+                const limpio = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
+                const extractedData = JSON.parse(limpio);
 
-        } catch (error) {
-            ultimoError = error;
-            console.log(`Intento ${intento}/${MAX_INTENTOS} fallido:`, error.message);
+                return res.status(200).json({ ...extractedData, modelo: nombreModelo });
 
-            // Si el error no es temporal (clave invalida, etc.) o es el ultimo intento, salir
-            if (!esErrorTemporal(error) || intento === MAX_INTENTOS) break;
+            } catch (error) {
+                console.log(`[${nombreModelo}] intento ${intento}/${INTENTOS_POR_MODELO}:`, textoError(error));
+                fallos.push(`${nombreModelo}: ${textoError(error).substring(0, 160)}`);
 
-            await esperar(ESPERA_BASE_MS * intento);
+                // Cuota agotada o modelo inexistente: pasar al siguiente modelo
+                if (debeCambiarDeModelo(error)) break;
+
+                // Saturacion temporal: esperar y reintentar el mismo modelo
+                if (esSaturacionTemporal(error) && intento < INTENTOS_POR_MODELO) {
+                    await esperar(ESPERA_BASE_MS * intento);
+                    continue;
+                }
+
+                // Otro error (clave invalida, etc.) o sin mas intentos: siguiente modelo
+                break;
+            }
         }
     }
 
     return res.status(500).json({
         error: 'Failed to process receipt',
-        detalle: ultimoError ? ultimoError.message : 'Error desconocido'
+        detalle: fallos.join(' || ')
     });
 };
