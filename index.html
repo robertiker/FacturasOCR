@@ -428,7 +428,7 @@
 
             btnGuardar.disabled = true;
             btnGuardar.textContent = 'Guardando...';
-            mostrarEstado('Guardando en Google Sheets...', 'cargando');
+            mostrarEstado('Guardando en la hoja y subiendo la foto a Drive...', 'cargando');
 
             // 1) Enviar a la hoja de Google (a traves de /api/guardar)
             try {
@@ -436,11 +436,12 @@
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        fecha: registro.fecha,
+                        fecha: base.slice(0, 10), // solo la fecha (AAAA-MM-DD) para la hoja
                         establecimiento: registro.establecimiento,
                         factura: registro.factura,
                         gasto: registro.total,
-                        nombreFoto: nombreFoto
+                        nombreFoto: nombreFoto,
+                        foto: fotoActual ? fotoActual.split(',')[1] : null // base64 para subir a Drive
                     })
                 });
 
@@ -459,9 +460,7 @@
                 return;
             }
 
-            // 2) Solo si la hoja lo ha aceptado: descargar la foto y guardar copia local
-            if (fotoActual) descargar(fotoActual, nombreFoto);
-
+            // 2) Solo si la hoja y Drive lo han aceptado: guardar copia local
             const lista = leerHistorial();
             lista.push(registro);
             escribirHistorial(lista);
@@ -478,7 +477,7 @@
             actualizarBotonGuardar();
 
             mostrarEstado(nombreFoto
-                ? `Guardado en la hoja. Foto: ${nombreFoto}`
+                ? `Guardado en la hoja. Foto subida a Drive: ${nombreFoto}`
                 : 'Guardado en la hoja.');
         });
 
