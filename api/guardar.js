@@ -7,20 +7,20 @@ module.exports = async function handler(req, res) {
         return res.status(405).json({ error: 'Method not allowed' });
     }
 
-    const url = process.env.SHEET_URL;
-    const token = process.env.SHEET_TOKEN;
+    const url = (process.env.SHEET_URL || '').trim();
+    const token = (process.env.SHEET_TOKEN || '').trim();
 
     if (!url || !token) {
         return res.status(500).json({ error: 'Faltan las variables SHEET_URL o SHEET_TOKEN en Vercel' });
     }
 
-    const { fecha, establecimiento, factura, gasto, nombreFoto } = req.body || {};
+    const { fecha, establecimiento, factura, gasto, nombreFoto, foto } = req.body || {};
 
     try {
         const respuesta = await fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ token, fecha, establecimiento, factura, gasto, nombreFoto }),
+            body: JSON.stringify({ token, fecha, establecimiento, factura, gasto, nombreFoto, foto }),
             redirect: 'follow' // Apps Script responde con una redireccion
         });
 
@@ -40,7 +40,7 @@ module.exports = async function handler(req, res) {
             return res.status(502).json({ error: data.error || 'Error al escribir en la hoja' });
         }
 
-        return res.status(200).json({ ok: true });
+        return res.status(200).json({ ok: true, urlFoto: data.urlFoto || '' });
 
     } catch (error) {
         return res.status(500).json({
