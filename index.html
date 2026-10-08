@@ -257,6 +257,11 @@
             <img class="miniatura" id="miniatura" alt="Foto del ticket">
 
             <div class="campo">
+                <label for="inputEstablecimiento">Establecimiento</label>
+                <input type="text" id="inputEstablecimiento" autocomplete="off" placeholder="Nombre de la empresa">
+            </div>
+
+            <div class="campo">
                 <label for="inputFactura">Factura</label>
                 <input type="text" id="inputFactura" autocomplete="off" placeholder="Nº de factura">
             </div>
@@ -287,6 +292,7 @@
         const btnCaptura = document.getElementById('btnCaptura');
         const btnGuardar = document.getElementById('btnGuardar');
         const btnCsv = document.getElementById('btnCsv');
+        const inputEstablecimiento = document.getElementById('inputEstablecimiento');
         const inputFactura = document.getElementById('inputFactura');
         const inputTotal = document.getElementById('inputTotal');
         const estado = document.getElementById('estado');
@@ -338,10 +344,13 @@
         /* ---------- Botón Guardar: se habilita si hay datos ---------- */
 
         function actualizarBotonGuardar() {
-            const hayDatos = inputFactura.value.trim() !== '' || inputTotal.value.trim() !== '';
+            const hayDatos = inputEstablecimiento.value.trim() !== '' ||
+                             inputFactura.value.trim() !== '' ||
+                             inputTotal.value.trim() !== '';
             btnGuardar.disabled = !hayDatos;
         }
 
+        inputEstablecimiento.addEventListener('input', actualizarBotonGuardar);
         inputFactura.addEventListener('input', actualizarBotonGuardar);
         inputTotal.addEventListener('input', actualizarBotonGuardar);
 
@@ -373,10 +382,10 @@
                 const li = document.createElement('li');
 
                 const izquierda = document.createElement('div');
-                izquierda.textContent = r.factura || 'Sin nº de factura';
+                izquierda.textContent = r.establecimiento || 'Sin nombre';
                 const fecha = document.createElement('span');
                 fecha.className = 'fecha';
-                fecha.textContent = r.fecha;
+                fecha.textContent = r.fecha + (r.factura ? ' · Factura ' + r.factura : '');
                 izquierda.appendChild(fecha);
 
                 const importe = document.createElement('div');
@@ -391,10 +400,10 @@
         btnCsv.addEventListener('click', () => {
             const lista = leerHistorial();
             const esc = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
-            const filas = [['Fecha', 'Factura', 'Total', 'Foto'].map(esc).join(';')];
+            const filas = [['Fecha', 'Establecimiento', 'Factura', 'Total', 'Foto'].map(esc).join(';')];
             lista.forEach(r => {
                 const total = r.total === null ? '' : String(r.total).replace('.', ',');
-                filas.push([r.fecha, r.factura, total, r.foto].map(esc).join(';'));
+                filas.push([r.fecha, r.establecimiento, r.factura, total, r.foto].map(esc).join(';'));
             });
             // BOM para que Excel respete los acentos
             const blob = new Blob(['\ufeff' + filas.join('\n')], { type: 'text/csv;charset=utf-8' });
@@ -417,6 +426,7 @@
             const lista = leerHistorial();
             lista.push({
                 fecha: base.replace('_', ' ').replace(/-(\d\d)-(\d\d)$/, ':$1:$2'),
+                establecimiento: inputEstablecimiento.value.trim(),
                 factura: inputFactura.value.trim(),
                 total: aNumero(inputTotal.value),
                 foto: nombreFoto
@@ -425,6 +435,7 @@
             pintarHistorial();
 
             // Limpiar el formulario para el siguiente ticket
+            inputEstablecimiento.value = '';
             inputFactura.value = '';
             inputTotal.value = '';
             fotoActual = null;
@@ -513,6 +524,7 @@
                     return;
                 }
 
+                inputEstablecimiento.value = data.merchantName ?? '';
                 inputFactura.value = data.invoiceNumber ?? '';
                 inputTotal.value = data.totalPrice != null ? String(data.totalPrice).replace('.', ',') : '';
                 actualizarBotonGuardar();

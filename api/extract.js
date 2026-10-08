@@ -1,7 +1,7 @@
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 
 // Inicializar Gemini con la variable de entorno de Vercel
-const genAI = new GoogleGenerativeAI(process.env.FacturasOCR);
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 // Modelos a probar en orden. La cuota se cuenta POR MODELO, asi que si uno
 // agota su cuota (429) o ya no existe (404) se pasa al siguiente.
@@ -14,7 +14,7 @@ const MODELOS = (process.env.GEMINI_MODELS ||
     .map((m) => m.trim())
     .filter(Boolean);
 
-const INTENTOS_POR_MODELO = 1;  // solo para errores de saturacion (503...)
+const INTENTOS_POR_MODELO = 2;  // solo para errores de saturacion (503...)
 const ESPERA_BASE_MS = 1500;
 
 const esperar = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -54,7 +54,7 @@ module.exports = async function handler(req, res) {
         }
     }];
 
-    const prompt = "Extract the invoice number and total price from this receipt. Return ONLY a valid JSON object with exactly two keys: 'invoiceNumber' (string) and 'totalPrice' (number).";
+    const prompt = "Extract data from this receipt or invoice: the name of the business or company that issued it, the invoice number and the total price. Return ONLY a valid JSON object with exactly three keys: 'merchantName' (string), 'invoiceNumber' (string) and 'totalPrice' (number). Use null for any value you cannot find.";
 
     const fallos = [];
 
