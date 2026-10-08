@@ -1,7 +1,7 @@
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 
 // Inicializar Gemini con la variable de entorno de Vercel
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+const genAI = new GoogleGenerativeAI(process.env.FacturasOCR);
 
 const MAX_INTENTOS = 3;      // numero total de intentos
 const ESPERA_BASE_MS = 1500; // espera entre intentos: 1.5s, 3s...
