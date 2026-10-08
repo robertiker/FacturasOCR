@@ -1,6 +1,6 @@
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 
-// Inicializar Gemini con la variable de entorno de Vercel
+// Inicializar Gemini con la variable de entorno de Vercel (se llama FacturasOCR)
 const genAI = new GoogleGenerativeAI(process.env.FacturasOCR);
 
 // Modelos a probar en orden. La cuota se cuenta POR MODELO, asi que si uno
@@ -54,7 +54,7 @@ module.exports = async function handler(req, res) {
         }
     }];
 
-    const prompt = "Extract data from this receipt or invoice: the name of the business or company that issued it, the invoice number and the total price. Return ONLY a valid JSON object with exactly three keys: 'merchantName' (string), 'invoiceNumber' (string) and 'totalPrice' (number). Use null for any value you cannot find.";
+    const prompt = "Extract data from this receipt or invoice: the name of the business or company that issued it, the invoice number, the total price and the purchase date printed on it. Dates on Spanish receipts use day/month/year order. Return ONLY a valid JSON object with exactly four keys: 'merchantName' (string), 'invoiceNumber' (string), 'totalPrice' (number) and 'ticketDate' (string in YYYY-MM-DD format; if the year has two digits assume 20xx). Use null for any value you cannot find.";
 
     const fallos = [];
 
