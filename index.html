@@ -4,6 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#0e5e63">
+    <link rel="manifest" href="/manifest.json">
+    <link rel="icon" type="image/png" href="/icons/icon-192.png">
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Tickets">
     <title>Lector de tickets</title>
     <style>
         :root {
@@ -195,6 +200,8 @@
             cursor: not-allowed;
         }
 
+        .boton-instalar { margin: -12px 0 18px; }
+
         .historial { margin-top: 44px; }
 
         .historial-cabecera {
@@ -239,6 +246,7 @@
     <main>
         <h1>Lector de tickets</h1>
         <p class="subtitulo">Fotografía un ticket y revisa los datos antes de guardarlos.</p>
+        <button type="button" class="boton-csv boton-instalar" id="btnInstalar" hidden>Instalar app en este móvil</button>
 
         <!-- Input oculto: abre la cámara trasera -->
         <input type="file" accept="image/*" capture="environment" id="cameraInput" hidden>
@@ -301,7 +309,8 @@
         const historialVacio = document.getElementById('historialVacio');
 
         const CLAVE_HISTORIAL = 'lectorTickets.historial';
-        let fotoActual = null; // dataURL de la foto comprimida
+        let fotoActual = null;  // dataURL de la foto comprimida
+        let fechaTicket = null; // fecha del ticket (AAAA-MM-DD) leida por la IA, no se muestra
 
         /* ---------- Utilidades ---------- */
 
@@ -330,6 +339,14 @@
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
+        }
+
+        // Comprueba que sea una fecha real con formato AAAA-MM-DD
+        function fechaValida(texto) {
+            if (typeof texto !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(texto)) return false;
+            const [a, m, d] = texto.split('-').map(Number);
+            const f = new Date(a, m - 1, d);
+            return f.getFullYear() === a && f.getMonth() === m - 1 && f.getDate() === d && a >= 2000;
         }
 
         function aNumero(texto) {
@@ -418,8 +435,11 @@
             const base = nombreFechaHora();
             const nombreFoto = fotoActual ? base + '.jpg' : '';
 
+            // Fecha para la hoja: la del ticket; si no se pudo leer, la de hoy
+            const fechaHoja = fechaTicket || base.slice(0, 10);
+
             const registro = {
-                fecha: base.replace('_', ' ').replace(/-(\d\d)-(\d\d)$/, ':$1:$2'),
+                fecha: fechaHoja,
                 establecimiento: inputEstablecimiento.value.trim(),
                 factura: inputFactura.value.trim(),
                 total: aNumero(inputTotal.value),
@@ -437,7 +457,7 @@
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        fecha: base.slice(0, 10), // solo la fecha (AAAA-MM-DD) para la hoja
+                        fecha: fechaHoja, // solo la fecha (AAAA-MM-DD)
                         establecimiento: registro.establecimiento,
                         factura: registro.factura,
                         gasto: registro.total,
@@ -479,6 +499,7 @@
             inputFactura.value = '';
             inputTotal.value = '';
             fotoActual = null;
+            fechaTicket = null;
             miniatura.classList.remove('visible');
             miniatura.removeAttribute('src');
             btnGuardar.textContent = 'Guardar datos';
@@ -512,6 +533,7 @@
             if (!file) return;
 
             btnCaptura.disabled = true;
+            fechaTicket = null;
             mostrarEstado('Preparando la imagen...', 'cargando');
 
             const reader = new FileReader();
@@ -581,6 +603,7 @@
                 inputEstablecimiento.value = data.merchantName ?? '';
                 inputFactura.value = data.invoiceNumber ?? '';
                 inputTotal.value = data.totalPrice != null ? String(data.totalPrice).replace('.', ',') : '';
+                fechaTicket = fechaValida(data.ticketDate) ? data.ticketDate : null;
                 actualizarBotonGuardar();
 
                 mostrarEstado('Datos leídos. Revísalos y pulsa Guardar datos.');
@@ -591,6 +614,33 @@
 
             btnCaptura.disabled = false;
         }
+
+        /* ---------- App instalable (PWA) ---------- */
+
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js').catch((e) => console.warn('SW no registrado:', e));
+            });
+        }
+
+        const btnInstalar = document.getElementById('btnInstalar');
+        let eventoInstalacion = null;
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            eventoInstalacion = e;
+            btnInstalar.hidden = false;
+        });
+
+        btnInstalar.addEventListener('click', async () => {
+            if (!eventoInstalacion) return;
+            eventoInstalacion.prompt();
+            await eventoInstalacion.userChoice;
+            eventoInstalacion = null;
+            btnInstalar.hidden = true;
+        });
+
+        window.addEventListener('appinstalled', () => { btnInstalar.hidden = true; });
 
         pintarHistorial();
         actualizarBotonGuardar();

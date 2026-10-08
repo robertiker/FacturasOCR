@@ -1,10 +1,15 @@
 {
   "functions": {
-    "api/extract.js": {
-      "maxDuration": 30
-    },
-    "api/guardar.js": {
-      "maxDuration": 30
+    "api/extract.js": { "maxDuration": 30 },
+    "api/guardar.js": { "maxDuration": 30 }
+  },
+  "headers": [
+    {
+      "source": "/sw.js",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache" },
+        { "key": "Service-Worker-Allowed", "value": "/" }
+      ]
     }
-  }
+  ]
 }
