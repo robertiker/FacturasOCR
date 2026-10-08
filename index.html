@@ -3,110 +3,531 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Scanner PWA</title>
+    <meta name="theme-color" content="#0e5e63">
+    <title>Lector de tickets</title>
+    <style>
+        :root {
+            --fondo: #dde6e3;
+            --papel: #fcfcf9;
+            --tinta: #1b2a2e;
+            --tinta-suave: #5b6b6e;
+            --acento: #0e5e63;
+            --acento-oscuro: #0a4549;
+            --linea: #c9d3d0;
+            --error: #a63a1f;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            background: var(--fondo);
+            color: var(--tinta);
+            font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+            line-height: 1.45;
+        }
+
+        main {
+            max-width: 460px;
+            margin: 0 auto;
+            padding: 28px 20px 48px;
+        }
+
+        h1 {
+            margin: 0 0 4px;
+            font-size: 1.7rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+        }
+
+        .subtitulo {
+            margin: 0 0 24px;
+            color: var(--tinta-suave);
+            font-size: 0.95rem;
+        }
+
+        button {
+            font: inherit;
+            cursor: pointer;
+            border: 0;
+        }
+
+        button:focus-visible,
+        input:focus-visible {
+            outline: 3px solid #f0b429;
+            outline-offset: 2px;
+        }
+
+        .boton-captura {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            width: 100%;
+            padding: 20px 16px;
+            border-radius: 14px;
+            background: var(--acento);
+            color: #fff;
+            font-size: 1.2rem;
+            font-weight: 650;
+            box-shadow: 0 6px 0 var(--acento-oscuro);
+            transition: transform 0.08s, box-shadow 0.08s;
+        }
+
+        .boton-captura:active:not(:disabled) {
+            transform: translateY(4px);
+            box-shadow: 0 2px 0 var(--acento-oscuro);
+        }
+
+        .boton-captura:disabled {
+            opacity: 0.6;
+            cursor: progress;
+        }
+
+        .boton-captura svg { width: 28px; height: 28px; flex: none; }
+
+        .estado {
+            min-height: 1.5em;
+            margin: 18px 0 14px;
+            font-size: 0.95rem;
+            color: var(--tinta-suave);
+        }
+
+        .estado.error { color: var(--error); font-weight: 600; }
+
+        .estado .rueda {
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            margin-right: 8px;
+            vertical-align: -2px;
+            border: 2px solid var(--linea);
+            border-top-color: var(--acento);
+            border-radius: 50%;
+            animation: girar 0.8s linear infinite;
+        }
+
+        @keyframes girar { to { transform: rotate(360deg); } }
+
+        /* Ticket de papel con borde dentado abajo */
+        .ticket {
+            position: relative;
+            padding: 22px 20px 26px;
+            background: var(--papel);
+            border-radius: 8px 8px 0 0;
+            box-shadow: 0 2px 0 rgba(27, 42, 46, 0.06);
+        }
+
+        .ticket::after {
+            content: "";
+            position: absolute;
+            left: 0;
+            right: 0;
+            top: 100%;
+            height: 10px;
+            background:
+                linear-gradient(135deg, var(--papel) 50%, transparent 50%) 0 0 / 14px 10px repeat-x,
+                linear-gradient(225deg, var(--papel) 50%, transparent 50%) 0 0 / 14px 10px repeat-x;
+        }
+
+        .miniatura {
+            display: none;
+            width: 100%;
+            max-height: 150px;
+            object-fit: cover;
+            margin-bottom: 18px;
+            border-radius: 6px;
+            border: 1px solid var(--linea);
+        }
+
+        .miniatura.visible { display: block; }
+
+        .campo { margin-bottom: 18px; }
+
+        .campo label {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--tinta-suave);
+        }
+
+        .campo input {
+            width: 100%;
+            padding: 12px 4px;
+            border: 0;
+            border-bottom: 2px dashed var(--linea);
+            background: transparent;
+            color: var(--tinta);
+            font-family: ui-monospace, "SF Mono", Consolas, "Courier New", monospace;
+            font-size: 1.35rem;
+            border-radius: 0;
+        }
+
+        .campo input:focus { border-bottom-color: var(--acento); }
+
+        .campo .con-euro { position: relative; }
+        .campo .con-euro input { padding-right: 32px; }
+        .campo .con-euro span {
+            position: absolute;
+            right: 4px;
+            bottom: 12px;
+            font-family: ui-monospace, Consolas, monospace;
+            font-size: 1.35rem;
+            color: var(--tinta-suave);
+        }
+
+        .boton-guardar {
+            width: 100%;
+            margin-top: 6px;
+            padding: 15px 16px;
+            border-radius: 12px;
+            background: var(--tinta);
+            color: #fff;
+            font-size: 1.05rem;
+            font-weight: 650;
+        }
+
+        .boton-guardar:disabled {
+            background: var(--linea);
+            color: var(--tinta-suave);
+            cursor: not-allowed;
+        }
+
+        .historial { margin-top: 44px; }
+
+        .historial-cabecera {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+
+        .historial h2 { margin: 0; font-size: 1.05rem; }
+
+        .boton-csv {
+            background: none;
+            color: var(--acento);
+            font-weight: 600;
+            text-decoration: underline;
+            padding: 4px 0;
+        }
+
+        .historial ul { list-style: none; margin: 0; padding: 0; }
+
+        .historial li {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 10px 0;
+            border-bottom: 1px solid var(--linea);
+            font-size: 0.95rem;
+        }
+
+        .historial li .fecha { display: block; color: var(--tinta-suave); font-size: 0.8rem; }
+        .historial li .importe { font-family: ui-monospace, Consolas, monospace; font-weight: 600; white-space: nowrap; }
+        .historial .vacio { color: var(--tinta-suave); font-size: 0.95rem; margin: 0; }
+
+        @media (prefers-reduced-motion: reduce) {
+            .estado .rueda { animation: none; }
+            .boton-captura { transition: none; }
+        }
+    </style>
 </head>
 <body>
-    <h1>Sube tu ticket</h1>
-    <!-- Abre la camara trasera -->
-    <input type="file" accept="image/*" capture="environment" id="cameraInput">
-    <div id="result"></div>
+    <main>
+        <h1>Lector de tickets</h1>
+        <p class="subtitulo">Fotografía un ticket y revisa los datos antes de guardarlos.</p>
+
+        <!-- Input oculto: abre la cámara trasera -->
+        <input type="file" accept="image/*" capture="environment" id="cameraInput" hidden>
+
+        <button type="button" class="boton-captura" id="btnCaptura">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M4 8a2 2 0 0 1 2-2h1.5l1.2-2h6.6l1.2 2H18a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/>
+                <circle cx="12" cy="13" r="3.5"/>
+            </svg>
+            Captura de ticket
+        </button>
+
+        <div class="estado" id="estado" role="status" aria-live="polite"></div>
+
+        <section class="ticket" aria-label="Datos del ticket">
+            <img class="miniatura" id="miniatura" alt="Foto del ticket">
+
+            <div class="campo">
+                <label for="inputFactura">Factura</label>
+                <input type="text" id="inputFactura" autocomplete="off" placeholder="Nº de factura">
+            </div>
+
+            <div class="campo">
+                <label for="inputTotal">Total</label>
+                <div class="con-euro">
+                    <input type="text" id="inputTotal" inputmode="decimal" autocomplete="off" placeholder="0,00">
+                    <span aria-hidden="true">€</span>
+                </div>
+            </div>
+
+            <button type="button" class="boton-guardar" id="btnGuardar" disabled>Guardar datos</button>
+        </section>
+
+        <section class="historial" aria-label="Últimos guardados">
+            <div class="historial-cabecera">
+                <h2>Últimos guardados</h2>
+                <button type="button" class="boton-csv" id="btnCsv" hidden>Exportar CSV</button>
+            </div>
+            <ul id="listaHistorial"></ul>
+            <p class="vacio" id="historialVacio">Aún no has guardado ningún ticket.</p>
+        </section>
+    </main>
 
     <script>
         const cameraInput = document.getElementById('cameraInput');
-        const resultDiv = document.getElementById('result');
+        const btnCaptura = document.getElementById('btnCaptura');
+        const btnGuardar = document.getElementById('btnGuardar');
+        const btnCsv = document.getElementById('btnCsv');
+        const inputFactura = document.getElementById('inputFactura');
+        const inputTotal = document.getElementById('inputTotal');
+        const estado = document.getElementById('estado');
+        const miniatura = document.getElementById('miniatura');
+        const listaHistorial = document.getElementById('listaHistorial');
+        const historialVacio = document.getElementById('historialVacio');
 
-        // Descarga la foto con el nombre AAAA-MM-DD_HH-MM-SS.jpg
-        function guardarFoto(dataUrl) {
+        const CLAVE_HISTORIAL = 'lectorTickets.historial';
+        let fotoActual = null; // dataURL de la foto comprimida
+
+        /* ---------- Utilidades ---------- */
+
+        function mostrarEstado(texto, tipo) {
+            estado.className = 'estado' + (tipo === 'error' ? ' error' : '');
+            estado.textContent = '';
+            if (tipo === 'cargando') {
+                const rueda = document.createElement('span');
+                rueda.className = 'rueda';
+                estado.appendChild(rueda);
+            }
+            estado.appendChild(document.createTextNode(texto));
+        }
+
+        // Nombre de archivo con fecha y hora: AAAA-MM-DD_HH-MM-SS
+        function nombreFechaHora() {
             const d = new Date();
             const pad = n => String(n).padStart(2, '0');
-            const nombre = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}_${pad(d.getHours())}-${pad(d.getMinutes())}-${pad(d.getSeconds())}.jpg`;
+            return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}_${pad(d.getHours())}-${pad(d.getMinutes())}-${pad(d.getSeconds())}`;
+        }
 
+        function descargar(href, nombre) {
             const a = document.createElement('a');
-            a.href = dataUrl;
+            a.href = href;
             a.download = nombre;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
-            return nombre;
         }
+
+        function aNumero(texto) {
+            const n = parseFloat(String(texto).replace(',', '.'));
+            return Number.isFinite(n) ? n : null;
+        }
+
+        function formatearEuros(n) {
+            return n === null ? '—' : n.toFixed(2).replace('.', ',') + ' €';
+        }
+
+        /* ---------- Botón Guardar: se habilita si hay datos ---------- */
+
+        function actualizarBotonGuardar() {
+            const hayDatos = inputFactura.value.trim() !== '' || inputTotal.value.trim() !== '';
+            btnGuardar.disabled = !hayDatos;
+        }
+
+        inputFactura.addEventListener('input', actualizarBotonGuardar);
+        inputTotal.addEventListener('input', actualizarBotonGuardar);
+
+        /* ---------- Historial (localStorage) ---------- */
+
+        function leerHistorial() {
+            try {
+                return JSON.parse(localStorage.getItem(CLAVE_HISTORIAL)) || [];
+            } catch (e) {
+                return [];
+            }
+        }
+
+        function escribirHistorial(lista) {
+            try {
+                localStorage.setItem(CLAVE_HISTORIAL, JSON.stringify(lista));
+            } catch (e) {
+                console.warn('No se pudo guardar el historial:', e);
+            }
+        }
+
+        function pintarHistorial() {
+            const lista = leerHistorial();
+            listaHistorial.textContent = '';
+            historialVacio.hidden = lista.length > 0;
+            btnCsv.hidden = lista.length === 0;
+
+            lista.slice(-5).reverse().forEach(r => {
+                const li = document.createElement('li');
+
+                const izquierda = document.createElement('div');
+                izquierda.textContent = r.factura || 'Sin nº de factura';
+                const fecha = document.createElement('span');
+                fecha.className = 'fecha';
+                fecha.textContent = r.fecha;
+                izquierda.appendChild(fecha);
+
+                const importe = document.createElement('div');
+                importe.className = 'importe';
+                importe.textContent = formatearEuros(r.total);
+
+                li.append(izquierda, importe);
+                listaHistorial.appendChild(li);
+            });
+        }
+
+        btnCsv.addEventListener('click', () => {
+            const lista = leerHistorial();
+            const esc = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
+            const filas = [['Fecha', 'Factura', 'Total', 'Foto'].map(esc).join(';')];
+            lista.forEach(r => {
+                const total = r.total === null ? '' : String(r.total).replace('.', ',');
+                filas.push([r.fecha, r.factura, total, r.foto].map(esc).join(';'));
+            });
+            // BOM para que Excel respete los acentos
+            const blob = new Blob(['\ufeff' + filas.join('\n')], { type: 'text/csv;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            descargar(url, 'tickets.csv');
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+        });
+
+        /* ---------- Guardar datos ---------- */
+
+        btnGuardar.addEventListener('click', () => {
+            const base = nombreFechaHora();
+            let nombreFoto = '';
+
+            if (fotoActual) {
+                nombreFoto = base + '.jpg';
+                descargar(fotoActual, nombreFoto);
+            }
+
+            const lista = leerHistorial();
+            lista.push({
+                fecha: base.replace('_', ' ').replace(/-(\d\d)-(\d\d)$/, ':$1:$2'),
+                factura: inputFactura.value.trim(),
+                total: aNumero(inputTotal.value),
+                foto: nombreFoto
+            });
+            escribirHistorial(lista);
+            pintarHistorial();
+
+            // Limpiar el formulario para el siguiente ticket
+            inputFactura.value = '';
+            inputTotal.value = '';
+            fotoActual = null;
+            miniatura.classList.remove('visible');
+            miniatura.removeAttribute('src');
+            actualizarBotonGuardar();
+
+            mostrarEstado(nombreFoto ? `Guardado. Foto: ${nombreFoto}` : 'Datos guardados.');
+        });
+
+        /* ---------- Captura y lectura del ticket ---------- */
+
+        btnCaptura.addEventListener('click', () => {
+            cameraInput.value = ''; // permite repetir la misma foto
+            cameraInput.click();
+        });
 
         cameraInput.addEventListener('change', (event) => {
             const file = event.target.files[0];
             if (!file) return;
 
-            resultDiv.innerText = "Procesando... (comprimiendo imagen)";
+            btnCaptura.disabled = true;
+            mostrarEstado('Preparando la imagen...', 'cargando');
 
             const reader = new FileReader();
-            reader.readAsDataURL(file);
-
+            reader.onerror = () => terminarConError('No se pudo leer la foto. Inténtalo de nuevo.');
             reader.onload = (e) => {
                 const img = new Image();
+                img.onerror = () => terminarConError('La imagen no es válida. Haz otra foto.');
+                img.onload = () => procesarImagen(img);
                 img.src = e.target.result;
-
-                img.onload = async () => {
-                    // Comprimir la imagen usando Canvas antes de enviarla
-                    const canvas = document.createElement('canvas');
-                    const MAX_DIM = 1000; // Limitar el ancho o alto maximo a 1000px
-                    let width = img.width;
-                    let height = img.height;
-
-                    if (width > height && width > MAX_DIM) {
-                        height *= MAX_DIM / width;
-                        width = MAX_DIM;
-                    } else if (height > MAX_DIM) {
-                        width *= MAX_DIM / height;
-                        height = MAX_DIM;
-                    }
-
-                    canvas.width = width;
-                    canvas.height = height;
-                    const ctx = canvas.getContext('2d');
-                    ctx.drawImage(img, 0, 0, width, height);
-
-                    // Exportar a JPG con calidad al 70% (reduce drasticamente el peso)
-                    const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
-                    const base64Data = dataUrl.split(',')[1];
-
-                    resultDiv.innerText = "Enviando al servidor...";
-
-                    try {
-                        const response = await fetch('/api/extract', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                image: base64Data,
-                                mimeType: 'image/jpeg'
-                            })
-                        });
-
-                        // Si Vercel rechaza la peticion (ej. por tamaño) lo cazamos aqui
-                        if (!response.ok) {
-                            const errorText = await response.text();
-                            resultDiv.innerText = `Error del servidor (${response.status}): ${errorText.substring(0, 600)}`;
-                            return;
-                        }
-
-                        const data = await response.json();
-
-                        if (data.error) {
-                            resultDiv.innerText = "Error IA: " + data.error + " | Detalle: " + (data.detalle || '');
-                            return;
-                        }
-
-                        // Solo si todo ha ido bien, guardamos la foto con fecha y hora
-                        const nombreArchivo = guardarFoto(dataUrl);
-
-                        resultDiv.innerHTML = `
-                            <p>Factura: <strong>${data.invoiceNumber ?? 'N/A'}</strong></p>
-                            <p>Total: <strong>${data.totalPrice ?? 'N/A'} €</strong></p>
-                            <p>Foto guardada como: ${nombreArchivo}</p>
-                        `;
-                    } catch (error) {
-                        resultDiv.innerText = "Error de conexión: " + error.message;
-                    }
-                };
             };
+            reader.readAsDataURL(file);
         });
+
+        function terminarConError(mensaje) {
+            mostrarEstado(mensaje, 'error');
+            btnCaptura.disabled = false;
+        }
+
+        async function procesarImagen(img) {
+            // Comprimir con Canvas antes de enviar
+            const canvas = document.createElement('canvas');
+            const MAX_DIM = 1000;
+            let width = img.width;
+            let height = img.height;
+
+            if (width > height && width > MAX_DIM) {
+                height *= MAX_DIM / width;
+                width = MAX_DIM;
+            } else if (height > MAX_DIM) {
+                width *= MAX_DIM / height;
+                height = MAX_DIM;
+            }
+
+            canvas.width = width;
+            canvas.height = height;
+            canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+            const base64Data = dataUrl.split(',')[1];
+
+            fotoActual = dataUrl;
+            miniatura.src = dataUrl;
+            miniatura.classList.add('visible');
+
+            mostrarEstado('Leyendo el ticket...', 'cargando');
+
+            try {
+                const response = await fetch('/api/extract', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ image: base64Data, mimeType: 'image/jpeg' })
+                });
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    terminarConError(`Error del servidor (${response.status}): ${errorText.substring(0, 400)}`);
+                    return;
+                }
+
+                const data = await response.json();
+
+                if (data.error) {
+                    terminarConError('Error de lectura: ' + data.error + (data.detalle ? ' | ' + data.detalle : ''));
+                    return;
+                }
+
+                inputFactura.value = data.invoiceNumber ?? '';
+                inputTotal.value = data.totalPrice != null ? String(data.totalPrice).replace('.', ',') : '';
+                actualizarBotonGuardar();
+
+                mostrarEstado('Datos leídos. Revísalos y pulsa Guardar datos.');
+            } catch (error) {
+                terminarConError('Error de conexión: ' + error.message);
+                return;
+            }
+
+            btnCaptura.disabled = false;
+        }
+
+        pintarHistorial();
+        actualizarBotonGuardar();
     </script>
 </body>
 </html>
