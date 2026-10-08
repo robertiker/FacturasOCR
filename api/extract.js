@@ -14,7 +14,7 @@ const MODELOS = (process.env.GEMINI_MODELS ||
     .map((m) => m.trim())
     .filter(Boolean);
 
-const INTENTOS_POR_MODELO = 2;  // solo para errores de saturacion (503...)
+const INTENTOS_POR_MODELO = 1;  // solo para errores de saturacion (503...)
 const ESPERA_BASE_MS = 1500;
 
 const esperar = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
