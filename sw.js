@@ -3,7 +3,7 @@
 // y usa la copia guardada solo si no hay conexion.
 // Las llamadas a /api/ nunca se guardan ni se interceptan.
 
-const CACHE = 'lector-tickets-v1';
+const CACHE = 'lector-tickets-v2';
 const CARCASA = [
     '/',
     '/index.html',
@@ -13,7 +13,10 @@ const CARCASA = [
 ];
 
 self.addEventListener('install', (event) => {
-    event.waitUntil(caches.open(CACHE).then((c) => c.addAll(CARCASA)));
+    // Se guarda cada fichero por separado: si alguno falta (404), el resto se guarda igual
+    event.waitUntil(
+        caches.open(CACHE).then((c) => Promise.all(CARCASA.map((u) => c.add(u).catch(() => null))))
+    );
     self.skipWaiting();
 });
 
