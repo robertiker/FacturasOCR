@@ -28,13 +28,20 @@ module.exports = async function handler(req, res) {
         const prompt = "Extract the invoice number and total price from this receipt. Return ONLY a valid JSON object with exactly two keys: 'invoiceNumber' (string) and 'totalPrice' (number). Do not use markdown formatting.";
 
         const result = await model.generateContent([prompt, ...imageParts]);
-        const responseText = result.response.text();
+        let responseText = result.response.text();
+        
+        // Limpiar el texto por si Gemini ha metido etiquetas markdown de codigo
+        responseText = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
         
         const extractedData = JSON.parse(responseText);
 
         return res.status(200).json(extractedData);
 
     } catch (error) {
-        return res.status(500).json({ error: 'Failed to process receipt' });
+        // Enviar el error exacto al frontend para saber que esta pasando
+        return res.status(500).json({ 
+            error: 'Failed to process receipt', 
+            detalle: error.message 
+        });
     }
 };
