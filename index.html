@@ -288,7 +288,6 @@
         <section class="historial" aria-label="Últimos guardados">
             <div class="historial-cabecera">
                 <h2>Últimos guardados</h2>
-                <button type="button" class="boton-csv" id="btnCsv" hidden>Exportar CSV</button>
             </div>
             <ul id="listaHistorial"></ul>
             <p class="vacio" id="historialVacio">Aún no has guardado ningún ticket.</p>
@@ -299,7 +298,6 @@
         const cameraInput = document.getElementById('cameraInput');
         const btnCaptura = document.getElementById('btnCaptura');
         const btnGuardar = document.getElementById('btnGuardar');
-        const btnCsv = document.getElementById('btnCsv');
         const inputEstablecimiento = document.getElementById('inputEstablecimiento');
         const inputFactura = document.getElementById('inputFactura');
         const inputTotal = document.getElementById('inputTotal');
@@ -393,7 +391,6 @@
             const lista = leerHistorial();
             listaHistorial.textContent = '';
             historialVacio.hidden = lista.length > 0;
-            btnCsv.hidden = lista.length === 0;
 
             lista.slice(-5).reverse().forEach(r => {
                 const li = document.createElement('li');
@@ -413,21 +410,6 @@
                 listaHistorial.appendChild(li);
             });
         }
-
-        btnCsv.addEventListener('click', () => {
-            const lista = leerHistorial();
-            const esc = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
-            const filas = [['Fecha', 'Establecimiento', 'Factura', 'Total', 'Foto'].map(esc).join(';')];
-            lista.forEach(r => {
-                const total = r.total === null ? '' : String(r.total).replace('.', ',');
-                filas.push([r.fecha, r.establecimiento, r.factura, total, r.foto].map(esc).join(';'));
-            });
-            // BOM para que Excel respete los acentos
-            const blob = new Blob(['\ufeff' + filas.join('\n')], { type: 'text/csv;charset=utf-8' });
-            const url = URL.createObjectURL(blob);
-            descargar(url, 'tickets.csv');
-            setTimeout(() => URL.revokeObjectURL(url), 1000);
-        });
 
         /* ---------- Guardar datos ---------- */
 
