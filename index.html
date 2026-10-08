@@ -431,6 +431,7 @@
             mostrarEstado('Guardando en la hoja y subiendo la foto a Drive...', 'cargando');
 
             // 1) Enviar a la hoja de Google (a traves de /api/guardar)
+            let data = {};
             try {
                 const response = await fetch('/api/guardar', {
                     method: 'POST',
@@ -445,7 +446,7 @@
                     })
                 });
 
-                const data = await response.json().catch(() => ({}));
+                data = await response.json().catch(() => ({}));
 
                 if (!response.ok || !data.ok) {
                     throw new Error(data.error
@@ -460,13 +461,20 @@
                 return;
             }
 
-            // 2) Solo si la hoja y Drive lo han aceptado: guardar copia local
+            // 2) Comprobar que Drive devolvio el enlace de la foto
+            const fotoSubida = !!(nombreFoto && data.urlFoto);
+            if (nombreFoto && !fotoSubida) {
+                // Red de seguridad: si Drive no la recibio, la foto no se pierde
+                descargar(fotoActual, nombreFoto);
+            }
+
+            // 3) Guardar copia local
             const lista = leerHistorial();
             lista.push(registro);
             escribirHistorial(lista);
             pintarHistorial();
 
-            // 3) Limpiar el formulario para el siguiente ticket
+            // 4) Limpiar el formulario para el siguiente ticket
             inputEstablecimiento.value = '';
             inputFactura.value = '';
             inputTotal.value = '';
@@ -476,9 +484,20 @@
             btnGuardar.textContent = 'Guardar datos';
             actualizarBotonGuardar();
 
-            mostrarEstado(nombreFoto
-                ? `Guardado en la hoja. Foto subida a Drive: ${nombreFoto}`
-                : 'Guardado en la hoja.');
+            if (fotoSubida) {
+                mostrarEstado(`Guardado en la hoja. Foto en Drive: ${nombreFoto} `);
+                const enlace = document.createElement('a');
+                enlace.href = data.urlFoto;
+                enlace.target = '_blank';
+                enlace.rel = 'noopener';
+                enlace.textContent = 'Ver foto';
+                enlace.style.color = 'var(--acento)';
+                estado.appendChild(enlace);
+            } else if (nombreFoto) {
+                mostrarEstado('Datos guardados en la hoja, pero la foto NO se subio a Drive (se ha descargado al movil). Revisa que Apps Script tenga la ultima version desplegada y que api/guardar.js este actualizado en Vercel.', 'error');
+            } else {
+                mostrarEstado('Guardado en la hoja.');
+            }
         });
 
         /* ---------- Captura y lectura del ticket ---------- */
