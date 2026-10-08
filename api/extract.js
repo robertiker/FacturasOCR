@@ -4,12 +4,15 @@ const { GoogleGenerativeAI } = require('@google/generative-ai');
 const genAI = new GoogleGenerativeAI(process.env.FacturasOCR);
 
 // Modelos a probar en orden. La cuota se cuenta POR MODELO, asi que si uno
-// agota su cuota (429) se pasa al siguiente. Se pueden cambiar sin tocar el
-// codigo con las variables de entorno GEMINI_MODEL y GEMINI_MODEL_RESPALDO.
-const MODELOS = [
-    process.env.GEMINI_MODEL || 'gemini-2.5-flash-lite',
-    process.env.GEMINI_MODEL_RESPALDO || 'gemini-flash-latest'
-];
+// agota su cuota (429) o ya no existe (404) se pasa al siguiente.
+// Para cambiarlos sin tocar el codigo, define en Vercel la variable
+// GEMINI_MODELS con nombres separados por comas, por ejemplo:
+//   gemini-3.5-flash-lite,gemini-3.1-flash-lite,gemini-3.5-flash
+const MODELOS = (process.env.GEMINI_MODELS ||
+    'gemini-3.5-flash-lite,gemini-3.1-flash-lite,gemini-3.5-flash')
+    .split(',')
+    .map((m) => m.trim())
+    .filter(Boolean);
 
 const INTENTOS_POR_MODELO = 2;  // solo para errores de saturacion (503...)
 const ESPERA_BASE_MS = 1500;

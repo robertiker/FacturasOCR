@@ -502,7 +502,7 @@
 
                 if (!response.ok) {
                     const errorText = await response.text();
-                    terminarConError(`Error del servidor (${response.status}): ${errorText.substring(0, 400)}`);
+                    terminarConError(`Error del servidor (${response.status}): ${errorText.substring(0, 1000)}`);
                     return;
                 }
 
