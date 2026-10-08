@@ -1,7 +1,7 @@
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 
 // Inicializar Gemini con la variable de entorno de Vercel
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+const genAI = new GoogleGenerativeAI(process.env.FacturasOCR);
 
 module.exports = async function handler(req, res) {
     // Solo aceptar metodos POST
