@@ -40,7 +40,7 @@ module.exports = async function handler(req, res) {
             return res.status(502).json({ error: data.error || 'Error al escribir en la hoja' });
         }
 
-        return res.status(200).json({ ok: true, urlFoto: data.urlFoto || '' });
+        return res.status(200).json({ ok: true, urlFoto: data.urlFoto || '', urlCarpeta: data.urlCarpeta || '' });
 
     } catch (error) {
         return res.status(500).json({
