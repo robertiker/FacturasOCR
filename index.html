@@ -15,6 +15,21 @@
         const cameraInput = document.getElementById('cameraInput');
         const resultDiv = document.getElementById('result');
 
+        // Descarga la foto con el nombre AAAA-MM-DD_HH-MM-SS.jpg
+        function guardarFoto(dataUrl) {
+            const d = new Date();
+            const pad = n => String(n).padStart(2, '0');
+            const nombre = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}_${pad(d.getHours())}-${pad(d.getMinutes())}-${pad(d.getSeconds())}.jpg`;
+
+            const a = document.createElement('a');
+            a.href = dataUrl;
+            a.download = nombre;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            return nombre;
+        }
+
         cameraInput.addEventListener('change', (event) => {
             const file = event.target.files[0];
             if (!file) return;
@@ -23,11 +38,11 @@
 
             const reader = new FileReader();
             reader.readAsDataURL(file);
-            
+
             reader.onload = (e) => {
                 const img = new Image();
                 img.src = e.target.result;
-                
+
                 img.onload = async () => {
                     // Comprimir la imagen usando Canvas antes de enviarla
                     const canvas = document.createElement('canvas');
@@ -49,7 +64,8 @@
                     ctx.drawImage(img, 0, 0, width, height);
 
                     // Exportar a JPG con calidad al 70% (reduce drasticamente el peso)
-                    const base64Data = canvas.toDataURL('image/jpeg', 0.7).split(',')[1];
+                    const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+                    const base64Data = dataUrl.split(',')[1];
 
                     resultDiv.innerText = "Enviando al servidor...";
 
@@ -62,24 +78,28 @@
                                 mimeType: 'image/jpeg'
                             })
                         });
-                        
+
                         // Si Vercel rechaza la peticion (ej. por tamaño) lo cazamos aqui
                         if (!response.ok) {
                             const errorText = await response.text();
-                            resultDiv.innerText = `Error del servidor (${response.status}): ${errorText.substring(0, 100)}`;
+                            resultDiv.innerText = `Error del servidor (${response.status}): ${errorText.substring(0, 600)}`;
                             return;
                         }
 
                         const data = await response.json();
-                        
-                        if(data.error) {
+
+                        if (data.error) {
                             resultDiv.innerText = "Error IA: " + data.error + " | Detalle: " + (data.detalle || '');
                             return;
                         }
 
+                        // Solo si todo ha ido bien, guardamos la foto con fecha y hora
+                        const nombreArchivo = guardarFoto(dataUrl);
+
                         resultDiv.innerHTML = `
-                            <p>Factura: <strong>${data.invoiceNumber || 'N/A'}</strong></p>
-                            <p>Total: <strong>${data.totalPrice || 'N/A'} €</strong></p>
+                            <p>Factura: <strong>${data.invoiceNumber ?? 'N/A'}</strong></p>
+                            <p>Total: <strong>${data.totalPrice ?? 'N/A'} €</strong></p>
+                            <p>Foto guardada como: ${nombreArchivo}</p>
                         `;
                     } catch (error) {
                         resultDiv.innerText = "Error de conexión: " + error.message;
