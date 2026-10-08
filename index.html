@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scanner PWA</title>
+</head>
+<body>
+    <h1>Sube tu ticket</h1>
+    <!-- Abre la camara trasera -->
+    <input type="file" accept="image/*" capture="environment" id="cameraInput">
+    <div id="result"></div>
+
+    <script>
+        const cameraInput = document.getElementById('cameraInput');
+        const resultDiv = document.getElementById('result');
+
+        cameraInput.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            resultDiv.innerText = "Procesando...";
+
+            // Leer la imagen y convertirla a Base64
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            
+            reader.onload = async () => {
+                // Quitar la cabecera del Base64
+                const base64Data = reader.result.split(',')[1];
+
+                try {
+                    // Llamada a la funcion serverless de Vercel
+                    const response = await fetch('/api/extract', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            image: base64Data,
+                            mimeType: file.type
+                        })
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if(data.error) {
+                        resultDiv.innerText = "Error: " + data.error;
+                        return;
+                    }
+
+                    resultDiv.innerHTML = `
+                        <p>Factura: <strong>${data.invoiceNumber || 'N/A'}</strong></p>
+                        <p>Total: <strong>${data.totalPrice || 'N/A'} €</strong></p>
+                    `;
+                } catch (error) {
+                    resultDiv.innerText = "Error de conexion.";
+                }
+            };
+        });
+    </script>
+</body>
+</html>
