@@ -236,6 +236,54 @@
         .historial li .importe { font-family: ui-monospace, Consolas, monospace; font-weight: 600; white-space: nowrap; }
         .historial .vacio { color: var(--tinta-suave); font-size: 0.95rem; margin: 0; }
 
+        /* Ventana de aviso: ticket sin guardar */
+        .aviso {
+            width: calc(100% - 40px);
+            max-width: 380px;
+            padding: 0;
+            border: 0;
+            border-radius: 14px;
+            background: var(--papel);
+            color: var(--tinta);
+            box-shadow: 0 14px 40px rgba(27, 42, 46, 0.35);
+        }
+
+        .aviso::backdrop { background: rgba(27, 42, 46, 0.55); }
+
+        .aviso-contenido { padding: 24px 22px 20px; }
+
+        .aviso h2 {
+            margin: 0 0 8px;
+            font-size: 1.25rem;
+            letter-spacing: -0.01em;
+        }
+
+        .aviso p {
+            margin: 0 0 22px;
+            color: var(--tinta-suave);
+        }
+
+        .aviso-botones { display: flex; gap: 12px; }
+
+        .aviso-botones button {
+            flex: 1;
+            padding: 14px 12px;
+            border-radius: 12px;
+            font-size: 1.02rem;
+            font-weight: 650;
+        }
+
+        .aviso-botones .aviso-cancelar {
+            background: transparent;
+            color: var(--tinta);
+            border: 2px solid var(--linea);
+        }
+
+        .aviso-botones .aviso-continuar {
+            background: var(--acento);
+            color: #fff;
+        }
+
         @media (prefers-reduced-motion: reduce) {
             .estado .rueda { animation: none; }
             .boton-captura { transition: none; }
@@ -294,6 +342,18 @@
         </section>
     </main>
 
+    <!-- Aviso: ticket sin guardar -->
+    <dialog class="aviso" id="avisoSinGuardar" aria-labelledby="avisoTitulo">
+        <div class="aviso-contenido">
+            <h2 id="avisoTitulo">Hay un ticket sin guardar</h2>
+            <p>Si continúas, se perderán los datos y la foto actuales.</p>
+            <div class="aviso-botones">
+                <button type="button" class="aviso-cancelar" id="avisoCancelar" autofocus>Cancelar</button>
+                <button type="button" class="aviso-continuar" id="avisoContinuar">Continuar</button>
+            </div>
+        </div>
+    </dialog>
+
     <script>
         const cameraInput = document.getElementById('cameraInput');
         const btnCaptura = document.getElementById('btnCaptura');
@@ -309,6 +369,7 @@
         const CLAVE_HISTORIAL = 'lectorTickets.historial';
         let fotoActual = null;  // dataURL de la foto comprimida
         let fechaTicket = null; // fecha del ticket (AAAA-MM-DD) leida por la IA, no se muestra
+        let leyendo = false;    // true mientras se esta leyendo un ticket
 
         /* ---------- Utilidades ---------- */
 
@@ -362,7 +423,7 @@
             const hayDatos = inputEstablecimiento.value.trim() !== '' ||
                              inputFactura.value.trim() !== '' ||
                              inputTotal.value.trim() !== '';
-            btnGuardar.disabled = !hayDatos;
+            btnGuardar.disabled = leyendo || !hayDatos;
         }
 
         inputEstablecimiento.addEventListener('input', actualizarBotonGuardar);
@@ -505,9 +566,43 @@
 
         /* ---------- Captura y lectura del ticket ---------- */
 
-        btnCaptura.addEventListener('click', () => {
+        const aviso = document.getElementById('avisoSinGuardar');
+
+        function abrirCamara() {
             cameraInput.value = ''; // permite repetir la misma foto
             cameraInput.click();
+        }
+
+        // Hay un ticket sin guardar si hay foto y algun dato en los cajetines
+        function hayTicketSinGuardar() {
+            const hayDatos = inputEstablecimiento.value.trim() !== '' ||
+                             inputFactura.value.trim() !== '' ||
+                             inputTotal.value.trim() !== '';
+            return hayDatos && !!fotoActual;
+        }
+
+        btnCaptura.addEventListener('click', () => {
+            if (!hayTicketSinGuardar()) {
+                abrirCamara();
+                return;
+            }
+            if (typeof aviso.showModal === 'function') {
+                aviso.showModal();
+            } else if (confirm('Hay un ticket sin guardar. ¿Continuar y perderlo?')) {
+                abrirCamara();
+            }
+        });
+
+        document.getElementById('avisoCancelar').addEventListener('click', () => aviso.close());
+
+        document.getElementById('avisoContinuar').addEventListener('click', () => {
+            aviso.close();
+            abrirCamara(); // se abre desde un toque del usuario, asi que el navegador lo permite
+        });
+
+        // Tocar fuera del cuadro equivale a Cancelar (la tecla Esc ya cierra el aviso)
+        aviso.addEventListener('click', (e) => {
+            if (e.target === aviso) aviso.close();
         });
 
         cameraInput.addEventListener('change', (event) => {
@@ -515,7 +610,18 @@
             if (!file) return;
 
             btnCaptura.disabled = true;
+            leyendo = true;
+
+            // Empezar limpio: nunca se mezclan datos de dos tickets
+            inputEstablecimiento.value = '';
+            inputFactura.value = '';
+            inputTotal.value = '';
+            fotoActual = null;
             fechaTicket = null;
+            miniatura.classList.remove('visible');
+            miniatura.removeAttribute('src');
+            actualizarBotonGuardar();
+
             mostrarEstado('Preparando la imagen...', 'cargando');
 
             const reader = new FileReader();
@@ -531,6 +637,8 @@
 
         function terminarConError(mensaje) {
             mostrarEstado(mensaje, 'error');
+            leyendo = false;
+            actualizarBotonGuardar();
             btnCaptura.disabled = false;
         }
 
@@ -594,6 +702,8 @@
                 return;
             }
 
+            leyendo = false;
+            actualizarBotonGuardar();
             btnCaptura.disabled = false;
         }
 
