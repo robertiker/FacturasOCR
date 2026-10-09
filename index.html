@@ -36,20 +36,14 @@
         main {
             max-width: 460px;
             margin: 0 auto;
-            padding: 28px 20px 48px;
+            padding: 18px 20px 36px;
         }
 
         h1 {
-            margin: 0 0 4px;
+            margin: 0 0 14px;
             font-size: 1.7rem;
             font-weight: 700;
             letter-spacing: -0.02em;
-        }
-
-        .subtitulo {
-            margin: 0 0 24px;
-            color: var(--tinta-suave);
-            font-size: 0.95rem;
         }
 
         button {
@@ -94,7 +88,7 @@
 
         .estado {
             min-height: 1.5em;
-            margin: 18px 0 14px;
+            margin: 14px 0 10px;
             font-size: 0.95rem;
             color: var(--tinta-suave);
         }
@@ -118,7 +112,7 @@
         /* Ticket de papel con borde dentado abajo */
         .ticket {
             position: relative;
-            padding: 22px 20px 26px;
+            padding: 16px 18px 20px;
             background: var(--papel);
             border-radius: 8px 8px 0 0;
             box-shadow: 0 2px 0 rgba(27, 42, 46, 0.06);
@@ -139,20 +133,20 @@
         .miniatura {
             display: none;
             width: 100%;
-            max-height: 150px;
+            max-height: 120px;
             object-fit: cover;
-            margin-bottom: 18px;
+            margin-bottom: 12px;
             border-radius: 6px;
             border: 1px solid var(--linea);
         }
 
         .miniatura.visible { display: block; }
 
-        .campo { margin-bottom: 18px; }
+        .campo { margin-bottom: 10px; }
 
         .campo label {
             display: block;
-            margin-bottom: 6px;
+            margin-bottom: 2px;
             font-size: 0.9rem;
             font-weight: 600;
             color: var(--tinta-suave);
@@ -160,7 +154,7 @@
 
         .campo input {
             width: 100%;
-            padding: 12px 4px;
+            padding: 8px 4px;
             border: 0;
             border-bottom: 2px dashed var(--linea);
             background: transparent;
@@ -177,7 +171,7 @@
         .campo .con-euro span {
             position: absolute;
             right: 4px;
-            bottom: 12px;
+            bottom: 8px;
             font-family: ui-monospace, Consolas, monospace;
             font-size: 1.35rem;
             color: var(--tinta-suave);
@@ -185,8 +179,8 @@
 
         .boton-guardar {
             width: 100%;
-            margin-top: 6px;
-            padding: 15px 16px;
+            margin-top: 2px;
+            padding: 13px 16px;
             border-radius: 12px;
             background: var(--tinta);
             color: #fff;
@@ -200,7 +194,7 @@
             cursor: not-allowed;
         }
 
-        .boton-instalar { margin: -12px 0 18px; }
+        .boton-instalar { margin: -4px 0 12px; }
 
         .historial { margin-top: 44px; }
 
@@ -293,7 +287,6 @@
 <body>
     <main>
         <h1>Lector de tickets</h1>
-        <p class="subtitulo">Fotografía un ticket y revisa los datos antes de guardarlos.</p>
         <button type="button" class="boton-csv boton-instalar" id="btnInstalar" hidden>Instalar app en este móvil</button>
 
         <!-- Input oculto: abre la cámara trasera -->
