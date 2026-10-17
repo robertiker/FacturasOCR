@@ -40,7 +40,7 @@
         }
 
         h1 {
-            margin: 0 0 14px;
+            margin: 0;
             font-size: 1.7rem;
             font-weight: 700;
             letter-spacing: -0.02em;
@@ -57,6 +57,32 @@
             outline: 3px solid #f0b429;
             outline-offset: 2px;
         }
+
+        .cabecera {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 14px;
+        }
+
+        .boton-hoja {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex: none;
+            width: 46px;
+            height: 46px;
+            border: 2px solid var(--acento);
+            border-radius: 12px;
+            color: var(--acento);
+            background: transparent;
+        }
+
+        .boton-hoja[hidden] { display: none; }
+        .boton-hoja:active { background: rgba(14, 94, 99, 0.12); }
+        .boton-hoja:focus-visible { outline: 3px solid #f0b429; outline-offset: 2px; }
+        .boton-hoja svg { width: 24px; height: 24px; }
 
         .boton-captura {
             display: flex;
@@ -286,7 +312,16 @@
 </head>
 <body>
     <main>
-        <h1>Lector de tickets</h1>
+        <header class="cabecera">
+            <h1>Lector de tickets</h1>
+            <a class="boton-hoja" id="btnHoja" href="#" target="_blank" rel="noopener" hidden
+               aria-label="Abrir la hoja de Google" title="Abrir la hoja de Google">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <rect x="3" y="4" width="18" height="16" rx="2"/>
+                    <path d="M3 10h18M3 15h18M9 10v10"/>
+                </svg>
+            </a>
+        </header>
         <button type="button" class="boton-csv boton-instalar" id="btnInstalar" hidden>Instalar app en este móvil</button>
 
         <!-- Input oculto: abre la cámara trasera -->
@@ -690,6 +725,7 @@
                 actualizarBotonGuardar();
 
                 mostrarEstado('Datos leídos. Revísalos y pulsa Guardar datos.');
+
             } catch (error) {
                 terminarConError('Error de conexión: ' + error.message);
                 return;
@@ -726,6 +762,22 @@
         });
 
         window.addEventListener('appinstalled', () => { btnInstalar.hidden = true; });
+
+        /* ---------- Boton para abrir la hoja de Google ---------- */
+
+        (async () => {
+            try {
+                const r = await fetch('/api/hoja');
+                if (!r.ok) return;
+                const d = await r.json();
+                // Solo se acepta un enlace de Google Docs/Sheets
+                if (d.url && /^https:\/\/docs\.google\.com\//.test(d.url)) {
+                    const btnHoja = document.getElementById('btnHoja');
+                    btnHoja.href = d.url;
+                    btnHoja.hidden = false;
+                }
+            } catch (e) { /* sin conexion o sin configurar: el boton queda oculto */ }
+        })();
 
         pintarHistorial();
         actualizarBotonGuardar();
